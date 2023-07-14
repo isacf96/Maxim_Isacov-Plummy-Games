@@ -1,0 +1,75 @@
+
+with ch as
+(
+select user_id
+        --,extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau') AS event_date1
+        --,(SELECT value.string_value FROM UNNEST(event_params) WHERE key="item_id") item
+        ,(SELECT value.string_value FROM UNNEST(event_params) WHERE key="drop_source_id") drop_source
+        ,sum((SELECT value.int_value FROM UNNEST(event_params) WHERE key="quantity")) quantity
+from `mira-merge---production.analytics_282550042.events_*`
+where 1=1
+        and event_name = 'item_drop'
+        and device.operating_system = 'Android'
+        and geo.country = 'United Kingdom'
+        and (extract (date from TIMESTAMP_MICROS(user_first_touch_timestamp) at time zone 'Europe/Chisinau')) >= '2023-01-01'
+        and user_id is not null
+        and (SELECT value.string_value FROM UNNEST(event_params) WHERE key="item_id") like '%it_ch_se_dandelion%'
+
+        #filter for drop_source_id
+        and (SELECT value.string_value FROM UNNEST(event_params) WHERE key="drop_source_id") = 'bubble_'
+        and (extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau')) >= '2023-05-01'
+        and (extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau')) <= '2023-05-14'
+group by user_id
+        --,event_date1
+        --,item
+        ,drop_source
+order by user_id
+        --,event_date1
+        --,item
+        ,drop_source
+)
+
+, act as
+(
+select  user_id
+        --,extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau') event_date2
+        ,count(event_name) events
+from `mira-merge---production.analytics_282550042.events_*`
+where 1=1
+        and device.operating_system = 'Android'
+        and geo.country = 'United Kingdom'
+        and user_id is not null
+        and (extract (datetime from TIMESTAMP_MICROS(user_first_touch_timestamp) at time zone 'Europe/Chisinau')) >= '2023-01-01'
+        and (extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau')) >= '2023-05-01'
+        and (extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau')) <= '2023-05-14'
+group by user_id
+        --,event_date2
+)
+
+, ch_q as
+(
+select act.user_id
+        --,act.event_date2
+        ,act.events
+        --,ch.user_id
+        --,ch.event_date1
+        --,ch.item
+        ,ch.drop_source
+        ,coalesce(ch.quantity, 0) quantity
+from act
+left join ch
+on act.user_id = ch.user_id
+--and act.event_date2 = ch.event_date1
+order by act.user_id
+        ,ch.quantity
+)
+
+
+select  count(user_id) count_user_id
+        ,sum(quantity) quantity
+        ,avg(quantity) average_quantity_per_user
+        ,APPROX_QUANTILES(quantity, 2)[OFFSET(1)] as median_quantity_per_user
+        ,APPROX_QUANTILES(quantity, 100)[OFFSET(90)] as p90_quantity_per_user
+        ,APPROX_QUANTILES(quantity, 100)[OFFSET(95)] as p95_quantity_per_user
+        ,APPROX_QUANTILES(quantity, 100)[OFFSET(97)] as p97_quantity_per_user
+from ch_q

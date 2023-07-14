@@ -1,0 +1,10 @@
+select *
+from `mira-merge---production.analytics_282550042.events_20230512*`
+where 1=1
+        and event_name = 'merge'
+        and device.operating_system = 'Android'
+        and geo.country = 'United Kingdom'
+        and (extract (date from TIMESTAMP_MICROS(user_first_touch_timestamp) at time zone 'Europe/Chisinau')) >= '2023-01-01'
+        and user_id is not null
+        and (extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau')) >= '2023-05-01'
+        and (extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau')) <= '2023-05-14'

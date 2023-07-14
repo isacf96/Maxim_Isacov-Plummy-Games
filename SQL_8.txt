@@ -1,0 +1,46 @@
+select extract (datetime from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau') datetime
+        ,event_name
+        ,user_id
+        ,user_pseudo_id
+        ,(SELECT value.int_value FROM UNNEST(event_params) WHERE key="engaged_session_event") engaged_session_event
+        ,(SELECT value.int_value FROM UNNEST(event_params) WHERE key="milestone_number") milestone_number
+        ,(SELECT value.int_value FROM UNNEST(event_params) WHERE key="milestone_requirement") milestone_requirement
+        ,(SELECT value.int_value FROM UNNEST(event_params) WHERE key="premium") premium
+        ,(SELECT value.int_value FROM UNNEST(event_params) WHERE key="ga_session_number") ga_session_number
+        ,(select value.string_value from unnest(event_params) where key ='feature_name') feature_name
+        ,(select value.string_value from unnest(event_params) where key ='link_id') link_id
+        ,(select value.string_value from unnest(event_params) where key ='ulid_id') ulid_id
+        ,(select value.string_value from unnest(event_params) where key ='milestone_currency') milestone_currency
+        --,*
+        --extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau') event_date_2
+       /* user_id
+        ,(SELECT value.int_value FROM UNNEST(event_params) WHERE key="milestone_number") milestone
+        ,(SELECT value.int_value FROM UNNEST(event_params) WHERE key="premium") premium
+        ,count(event_name) events
+        */
+from `mira-merge---production.analytics_282550042.events_*`
+where 1=1
+        and event_name = 'milestone'
+        and (select value.string_value from unnest(event_params) where key ='feature_name') = 'se_deer'
+        and (SELECT value.int_value FROM UNNEST(event_params) WHERE key="milestone_number") = 2
+        and device.operating_system = 'Android'
+        and geo.country = 'United Kingdom'
+        and (extract (date from TIMESTAMP_MICROS(user_first_touch_timestamp) at time zone 'Europe/Chisinau')) >= '2023-01-01'
+        and user_id is not null
+        and (extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau')) >= '2023-05-01'
+        and (extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau')) <= '2023-05-14'
+        and user_id = '2LkEAp3YpkgAvHOwUMQN1G362wL'
+        # filter for premium
+        --and (SELECT value.int_value FROM UNNEST(event_params) WHERE key="premium") = 1
+        
+        # select payers from 'payers' cte
+        --and user_id in (select * from payers)
+/*
+group by user_id 
+        ,milestone
+        ,premium
+--having events > 1
+order by user_id 
+        ,milestone
+        ,premium
+*/

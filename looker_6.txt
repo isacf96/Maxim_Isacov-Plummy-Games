@@ -1,0 +1,1777 @@
+include: "user_properties_generated*"
+include: "events_generated*"
+include: "game_version*"
+include: "active_users*"
+include: "level_up*"
+
+view: events {
+  sql_table_name: `analytics_282550042.events_*`  ;;
+
+  extends: [events_generated,user_properties_generated]
+
+### app info
+  dimension: app_info {
+    hidden: yes
+    sql: ${TABLE}.app_info ;;
+  }
+
+  dimension: id {
+    group_label: "App Info"
+    description: "The package name or bundle ID of the app."
+    type: string
+    sql: ${app_info}.id ;;
+  }
+
+  dimension: firebase_app_id {
+    group_label: "App Info"
+    description: "The Firebase App ID associated with the app"
+    type: string
+    sql: ${app_info}.firebase_app_id ;;
+  }
+
+  dimension: install_source {
+    group_label: "App Info"
+    description: "The store that installed the app."
+    type: string
+    sql: ${app_info}.install_source ;;
+  }
+
+  dimension: version {
+    group_label: "App Info"
+    description: "The app's versionName (Android) or short bundle version."
+    type: string
+    sql: ${app_info}.version ;;
+  }
+
+### end app info
+
+### device dimensions
+
+  dimension: device {
+    hidden: yes
+    sql: ${TABLE}.device ;;
+  }
+
+  dimension: advertising_id {
+    group_label: "Device"
+    description: "Advertising ID/IDFA."
+    type: string
+    sql: ${device}.advertising_id ;;
+  }
+
+  dimension: browser {
+    group_label: "Device"
+    type: string
+    sql: ${device}.browser ;;
+  }
+
+  dimension: browser_version {
+    group_label: "Device"
+    type: string
+    sql: ${device}.browser_version ;;
+  }
+
+  dimension: category {
+    description: "The device category (mobile, tablet, desktop)."
+    group_label: "Device"
+    type: string
+    sql: ${device}.category ;;
+  }
+
+  dimension: is_limited_ad_tracking {
+    group_label: "Device"
+    description: "The device's Limit Ad Tracking setting."
+    type: string
+    sql: ${device}.is_limited_ad_tracking ;;
+  }
+
+  dimension: language {
+    group_label: "Device"
+    description: "The OS language."
+    type: string
+    sql: ${device}.language ;;
+  }
+
+  dimension: mobile_brand_name {
+    group_label: "Device"
+    description: "The device brand name."
+    type: string
+    sql: ${device}.mobile_brand_name ;;
+  }
+
+  dimension: mobile_marketing_name {
+    group_label: "Device"
+    description: "The device marketing name."
+    type: string
+    sql: ${device}.mobile_marketing_name ;;
+  }
+
+  dimension: mobile_model_name {
+    group_label: "Device"
+    description: "The device model name."
+    type: string
+    sql: ${device}.mobile_model_name ;;
+  }
+
+  dimension: mobile_os_hardware_model {
+    group_label: "Device"
+    description: "The device model information retrieved directly from the operating system."
+    type: string
+    sql: ${device}.mobile_os_hardware_model ;;
+  }
+
+  dimension: operating_system {
+    group_label: "Device"
+    description: "The operating system of the device."
+    type: string
+    sql: ${device}.operating_system ;;
+  }
+
+  dimension: operating_system_version {
+    group_label: "Device"
+    description: "The OS version."
+    type: string
+    sql: ${device}.operating_system_version ;;
+  }
+
+  dimension: time_zone_offset_seconds {
+    group_label: "Device"
+    description: "The offset from GMT in seconds."
+    type: number
+    sql: ${device}.time_zone_offset_seconds ;;
+  }
+
+  dimension: vendor_id {
+    group_label: "Device"
+    description: "IDFV (present only if IDFA is not collected)."
+    type: string
+    sql: ${device}.vendor_id ;;
+  }
+
+  #### end device
+
+  dimension: event_bundle_sequence_id {
+    description: "The sequential ID of the bundle in which these events were uploaded."
+    hidden: yes
+    type: number
+    sql: ${TABLE}.event_bundle_sequence_id ;;
+  }
+
+  dimension_group: event {
+    type: time
+    timeframes: [date, week, day_of_week, month, year]
+    sql: TIMESTAMP(PARSE_DATE('%Y%m%d', REGEXP_EXTRACT(_TABLE_SUFFIX,r'\d\d\d\d\d\d\d\d'))) ;;
+  }
+
+  dimension_group: _event {
+    label: "Event"
+    timeframes: [raw,time,hour,minute]
+    type: time
+    sql: TIMESTAMP_MICROS(${TABLE}.event_timestamp) ;;
+  }
+
+  measure: min_event_timestamp {
+    type: time
+    timeframes: [time, date]
+    sql: MIN(TIMESTAMP_MICROS(${TABLE}.event_timestamp)) ;;
+  }
+
+  dimension_group: diff_min_timestamp_and_first_touch {
+  type:  duration
+  intervals: [second, minute]
+  sql_start: MIN(TIMESTAMP_MICROS(${TABLE}.event_timestamp)) ;;
+  sql_end: TIMESTAMP_MICROS(${TABLE}.user_first_touch_timestamp) ;;
+  }
+
+  dimension: event_dimensions {
+    hidden: yes
+    sql: ${TABLE}.event_dimensions ;;
+  }
+
+  dimension: event_name {
+    type: string
+    sql: ${TABLE}.event_name ;;
+  }
+
+  dimension: event_params {
+    hidden: yes
+    sql: ${TABLE}.event_params ;;
+  }
+
+  dimension: event_previous_timestamp {
+    hidden: yes
+    type: number
+    sql: ${TABLE}.event_previous_timestamp ;;
+  }
+
+  dimension: event_server_timestamp_offset {
+    hidden: yes
+    type: number
+    sql: ${TABLE}.event_server_timestamp_offset ;;
+  }
+
+  dimension: event_value_in_usd {
+    hidden: yes
+    type: number
+    sql: ${TABLE}.event_value_in_usd ;;
+  }
+
+  measure: total_value_in_usd {
+    type: sum
+    value_format: "$#,##0"
+    sql: ${event_value_in_usd} ;;
+  }
+
+  ### geo dimensions
+
+  dimension: geo {
+    hidden: yes
+    sql: ${TABLE}.geo ;;
+  }
+
+  dimension: city {
+    group_label: "User Location"
+    description: "The city from which events were reported, based on IP address."
+    type: string
+    sql: ${geo}.city ;;
+  }
+
+  dimension: continent {
+    group_label: "User Location"
+    description: "The continent from which events were reported, based on IP address."
+    type: string
+    sql: ${geo}.continent ;;
+    drill_fields: [sub_continent,country]
+  }
+
+  dimension: country {
+    group_label: "User Location"
+    description: "The country from which events were reported, based on IP address."
+    type: string
+    map_layer_name: countries
+    sql: ${geo}.country ;;
+  }
+
+  dimension: metro {
+    group_label: "User Location"
+    description: "The metro from which events were reported, based on IP address."
+    type: string
+    sql: ${geo}.metro ;;
+  }
+
+  dimension: region {
+    group_label: "User Location"
+    description: "The region from which events were reported, based on IP address."
+    type: string
+    sql: ${geo}.region ;;
+  }
+
+  dimension: sub_continent {
+    group_label: "User Location"
+    description: "The subcontinent from which events were reported, based on IP address."
+    type: string
+    sql: ${geo}.sub_continent ;;
+  }
+
+  ### end geo dimensions
+
+  dimension: platform {
+    type: string
+    sql: ${TABLE}.platform ;;
+  }
+
+  dimension: stream_id {
+    hidden: yes
+    type: string
+    sql: ${TABLE}.stream_id ;;
+  }
+
+  dimension: traffic_source {
+    hidden: yes
+    sql: ${TABLE}.traffic_source ;;
+  }
+
+  dimension: traffic_source_medium {
+    type: string
+    sql: ${traffic_source}.medium ;;
+  }
+
+  dimension_group: user_first_touch {
+    description: "The time at which the user first opened the app."
+    timeframes: [raw,time,hour,minute,date, week, day_of_week, month, year]
+    type: time
+    sql: TIMESTAMP_MICROS(${TABLE}.user_first_touch_timestamp) ;;
+  }
+
+  dimension: user_id {
+    description: "The user ID set via the setUserId API."
+    type: string
+    sql: ${TABLE}.user_id ;;
+  }
+
+  dimension: user_properties {
+    hidden: yes
+    sql: ${TABLE}.user_properties ;;
+  }
+
+  ### user ltv dimensions
+
+  dimension: user_ltv {
+    hidden: yes
+    sql: ${TABLE}.user_ltv ;;
+  }
+
+  dimension: currency {
+    group_label: "User LTV"
+    description: "The Lifetime Value (currency) of the user. This field is not populated in intraday tables."
+    type: string
+    sql: ${user_ltv}.currency ;;
+  }
+
+  dimension: revenue {
+    group_label: "User LTV"
+    description: "The Lifetime Value (revenue) of the user. This field is not populated in intraday tables."
+    type: number
+    sql: ${user_ltv}.revenue ;;
+  }
+
+  ### end user ltv dimensions
+
+
+  dimension: user_pseudo_id {
+    description: "The pseudonymous id (e.g., app instance ID) for the user."
+    type: string
+    sql: ${TABLE}.user_pseudo_id ;;
+  }
+
+  dimension: firebase_user_id {
+    description: "either user_id or user_pseudo_id"
+    sql: COALESCE(${user_pseudo_id},${user_id}) ;;
+  }
+
+  dimension: user_id_who_app_remove {
+    description: "The user_id for the user."
+    type: string
+    sql: CASE WHEN ${event_name} = 'app_remove' THEN ${firebase_user_id} END ;;
+  }
+
+  dimension: user_id_who_in_app_purchase {
+    description: "The user_id for the user."
+    type: string
+    sql: CASE WHEN ${event_name} = 'in_app_purchase' THEN ${firebase_user_id} END ;;
+  }
+
+  dimension: user_pseudo_id_who_first_open {
+    description: "The user_id for the user."
+    type: string
+    sql: CASE WHEN ${event_name} = 'first_open' THEN ${user_pseudo_id} END ;;
+  }
+
+  measure: number_of_users {
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+  }
+
+  measure: number_of_user_id {
+    type: count_distinct
+    sql: ${user_id} ;;
+  }
+
+  measure: number_of_user_pseudo_id {
+    type: count_distinct
+    sql: ${user_pseudo_id} ;;
+  }
+
+  measure: number_of_users_who_app_remove {
+    type: count_distinct
+    sql: ${user_id_who_app_remove} ;;
+  }
+
+  measure: number_of_users_who_in_app_purchase {
+    type: count_distinct
+    sql: ${user_id_who_in_app_purchase} ;;
+  }
+
+  measure: number_of_user_pseudo_id_who_first_open {
+    type: count_distinct
+    sql: ${user_pseudo_id_who_first_open} ;;
+  }
+
+  # measure: number_of_events {
+  #   type: count
+  #   drill_fields: [event_name]
+  # }
+
+  measure: number_of_events {
+    type: count_distinct
+    sql:CONCAT(${TABLE}.user_pseudo_id,${TABLE}.user_id,${TABLE}.event_name,${TABLE}.event_timestamp) ;;
+    drill_fields: [event_name]
+  }
+
+# Retention
+
+  dimension_group: current {
+    description: "the time right now"
+    type: time
+    sql: CURRENT_TIMESTAMP() ;;
+  }
+
+  dimension: days_since_user_signup {
+    type: number
+    description: "Days since first seen (from today)"
+    sql:  DATE_DIFF(${current_date}, ${user_first_touch_date}, DAY);;
+  }
+
+
+  dimension: retention_day {
+    group_label: "Retention"
+    description: "Days since first seen (from event date)"
+    type:  number
+    sql:  DATE_DIFF(${event_date}, ${user_first_touch_date}, DAY);;
+  }
+
+  dimension: retention_week {
+    group_label: "Retention"
+    description: "Weeks since first seen (from event date)"
+    type:  number
+    sql:  DATE_DIFF(${event_date}, ${user_first_touch_date}, WEEK);;
+  }
+
+  dimension: retention_month {
+    group_label: "Retention"
+    description: "Months since first seen (from event date)"
+    type:  number
+    sql:  DATE_DIFF(${event_date}, ${user_first_touch_date}, MONTH);;
+  }
+
+  dimension: retention_quarter {
+    group_label: "Retention"
+    description: "Quarters since first seen (from event date)"
+    type:  number
+    sql:  DATE_DIFF(${event_date}, ${user_first_touch_date}, QUARTER);;
+  }
+
+  # D1
+
+  measure: d1_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 1"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "1"
+    }
+    drill_fields: [country,d1_retained_users]
+  }
+
+  measure: d1_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 0 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">0"
+    }
+  }
+
+  measure: d1_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 1 days) that came back to play on day 1"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d1_retained_users}/ NULLIF(${d1_eligible_users},0);;
+    drill_fields: [country,d1_retention_rate]
+  }
+
+  # D2
+
+  measure: d2_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 2"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "2"
+    }
+    drill_fields: [country,d2_retained_users]
+  }
+
+  measure: d2_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 2 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">2"
+    }
+  }
+
+  measure: d2_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 2 days) that came back to play on day 2"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d2_retained_users}/ NULLIF(${d2_eligible_users},0);;
+    drill_fields: [country,d2_retention_rate]
+  }
+
+  # D3
+
+  measure: d3_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 3"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "3"
+    }
+    drill_fields: [country,d3_retained_users]
+  }
+
+  measure: d3_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 3 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">3"
+    }
+  }
+
+  measure: d3_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 3 days) that came back to play on day 3"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d3_retained_users}/ NULLIF(${d3_eligible_users},0);;
+    drill_fields: [country,d3_retention_rate]
+  }
+
+  # D4
+
+  measure: d4_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 4"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "4"
+    }
+    drill_fields: [country,d4_retained_users]
+  }
+
+  measure: d4_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 4 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">4"
+    }
+  }
+
+  measure: d4_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 4 days) that came back to play on day 4"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d4_retained_users}/ NULLIF(${d4_eligible_users},0);;
+    drill_fields: [country,d4_retention_rate]
+  }
+
+  # D5
+
+  measure: d5_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 5"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "5"
+    }
+    drill_fields: [country,d5_retained_users]
+  }
+
+  measure: d5_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 5 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">5"
+    }
+  }
+
+  measure: d5_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 5 days) that came back to play on day 5"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d5_retained_users}/ NULLIF(${d5_eligible_users},0);;
+    drill_fields: [country,d5_retention_rate]
+  }
+
+  # D6
+
+  measure: d6_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 6"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "6"
+    }
+    drill_fields: [country,d6_retained_users]
+  }
+
+  measure: d6_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 6 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">6"
+    }
+  }
+
+  measure: d6_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 6 days) that came back to play on day 6"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d6_retained_users}/ NULLIF(${d6_eligible_users},0);;
+    drill_fields: [country,d6_retention_rate]
+  }
+
+  # D7
+
+  measure: d7_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 7"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "7"
+    }
+    drill_fields: [country,d7_retained_users]
+  }
+
+  measure: d7_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 7 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">7"
+    }
+    drill_fields: [country,d7_eligible_users]
+  }
+
+  measure: d7_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 7 days) that came back to play on day 7"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d7_retained_users}/ NULLIF(${d7_eligible_users},0);;
+    drill_fields: [country,d7_retention_rate]
+  }
+
+  # D8
+
+  measure: d8_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 8"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "8"
+    }
+    drill_fields: [country,d8_retained_users]
+  }
+
+  measure: d8_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 8 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">8"
+    }
+  }
+
+  measure: d8_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 8 days) that came back to play on day 8"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d8_retained_users}/ NULLIF(${d8_eligible_users},0);;
+    drill_fields: [country,d8_retention_rate]
+  }
+
+  # D9
+
+  measure: d9_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 9"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "9"
+    }
+    drill_fields: [country,d9_retained_users]
+  }
+
+  measure: d9_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 9 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">9"
+    }
+  }
+
+  measure: d9_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 9 days) that came back to play on day 9"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d9_retained_users}/ NULLIF(${d9_eligible_users},0);;
+    drill_fields: [country,d9_retention_rate]
+  }
+
+  # D10
+
+  measure: d10_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 10"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "10"
+    }
+    drill_fields: [country,d10_retained_users]
+  }
+
+  measure: d10_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 10 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">10"
+    }
+  }
+
+  measure: d10_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 10 days) that came back to play on day 10"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d10_retained_users}/ NULLIF(${d10_eligible_users},0);;
+    drill_fields: [country,d10_retention_rate]
+  }
+
+  # D11
+
+  measure: d11_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 11"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "11"
+    }
+    drill_fields: [country,d11_retained_users]
+  }
+
+  measure: d11_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 11 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">11"
+    }
+  }
+
+  measure: d11_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 11 days) that came back to play on day 11"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d11_retained_users}/ NULLIF(${d11_eligible_users},0);;
+    drill_fields: [country,d11_retention_rate]
+  }
+
+  # D12
+
+  measure: d12_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 12"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "12"
+    }
+    drill_fields: [country,d12_retained_users]
+  }
+
+  measure: d12_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 12 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">12"
+    }
+  }
+
+  measure: d12_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 12 days) that came back to play on day 12"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d12_retained_users}/ NULLIF(${d12_eligible_users},0);;
+    drill_fields: [country,d12_retention_rate]
+  }
+
+  # D13
+
+  measure: d13_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 13"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "13"
+    }
+    drill_fields: [country,d13_retained_users]
+  }
+
+  measure: d13_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 13 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">13"
+    }
+  }
+
+  measure: d13_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 13 days) that came back to play on day 13"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d13_retained_users}/ NULLIF(${d13_eligible_users},0);;
+    drill_fields: [country,d13_retention_rate]
+  }
+
+  # D14
+
+  measure: d14_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 14"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "14"
+    }
+    drill_fields: [country,d14_retained_users]
+  }
+
+  measure: d14_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 14 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">14"
+    }
+    drill_fields: [country,d14_eligible_users]
+  }
+
+  measure: d14_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 14 days) that came back to play on day 14"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d14_retained_users}/ NULLIF(${d14_eligible_users},0);;
+    drill_fields: [country,d14_retention_rate]
+  }
+
+  # D15
+
+  measure: d15_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 15"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "15"
+    }
+    drill_fields: [country,d15_retained_users]
+  }
+
+  measure: d15_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 15 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">15"
+    }
+    drill_fields: [country,d15_eligible_users]
+  }
+
+  measure: d15_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 15 days) that came back to play on day 15"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d15_retained_users}/ NULLIF(${d15_eligible_users},0);;
+    drill_fields: [country,d15_retention_rate]
+  }
+
+  # D16
+
+  measure: d16_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 16"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "16"
+    }
+    drill_fields: [country,d16_retained_users]
+  }
+
+  measure: d16_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 16 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">16"
+    }
+    drill_fields: [country,d16_eligible_users]
+  }
+
+  measure: d16_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 16 days) that came back to play on day 16"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d16_retained_users}/ NULLIF(${d16_eligible_users},0);;
+    drill_fields: [country,d16_retention_rate]
+  }
+
+  # D17
+
+  measure: d17_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 17"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "17"
+    }
+    drill_fields: [country,d17_retained_users]
+  }
+
+  measure: d17_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 17 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">17"
+    }
+    drill_fields: [country,d17_eligible_users]
+  }
+
+  measure: d17_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 17 days) that came back to play on day 17"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d17_retained_users}/ NULLIF(${d17_eligible_users},0);;
+    drill_fields: [country,d17_retention_rate]
+  }
+
+  # D18
+
+  measure: d18_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 18"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "18"
+    }
+    drill_fields: [country,d18_retained_users]
+  }
+
+  measure: d18_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 18 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">18"
+    }
+    drill_fields: [country,d18_eligible_users]
+  }
+
+  measure: d18_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 18 days) that came back to play on day 18"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d18_retained_users}/ NULLIF(${d18_eligible_users},0);;
+    drill_fields: [country,d18_retention_rate]
+  }
+
+  # D19
+
+  measure: d19_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 19"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "19"
+    }
+    drill_fields: [country,d19_retained_users]
+  }
+
+  measure: d19_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 19 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">19"
+    }
+    drill_fields: [country,d19_eligible_users]
+  }
+
+  measure: d19_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 19 days) that came back to play on day 19"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d19_retained_users}/ NULLIF(${d19_eligible_users},0);;
+    drill_fields: [country,d19_retention_rate]
+  }
+
+  # D20
+
+  measure: d20_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 20"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "20"
+    }
+    drill_fields: [country,d20_retained_users]
+  }
+
+  measure: d20_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 20 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">20"
+    }
+    drill_fields: [country,d20_eligible_users]
+  }
+
+  measure: d20_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 20 days) that came back to play on day 20"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d20_retained_users}/ NULLIF(${d20_eligible_users},0);;
+    drill_fields: [country,d20_retention_rate]
+  }
+
+  # D21
+
+  measure: d21_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 21"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "21"
+    }
+    drill_fields: [country,d21_retained_users]
+  }
+
+  measure: d21_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 21 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">21"
+    }
+    drill_fields: [country,d21_eligible_users]
+  }
+
+  measure: d21_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 21 days) that came back to play on day 21"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d21_retained_users}/ NULLIF(${d21_eligible_users},0);;
+    drill_fields: [country,d21_retention_rate]
+  }
+
+  # D22
+
+  measure: d22_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 22"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "22"
+    }
+    drill_fields: [country,d22_retained_users]
+  }
+
+  measure: d22_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 22 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">22"
+    }
+    drill_fields: [country,d22_eligible_users]
+  }
+
+  measure: d22_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 22 days) that came back to play on day 22"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d22_retained_users}/ NULLIF(${d22_eligible_users},0);;
+    drill_fields: [country,d22_retention_rate]
+  }
+
+  # D23
+
+  measure: d23_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 23"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "23"
+    }
+    drill_fields: [country,d23_retained_users]
+  }
+
+  measure: d23_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 23 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">23"
+    }
+    drill_fields: [country,d23_eligible_users]
+  }
+
+  measure: d23_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 23 days) that came back to play on day 23"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d23_retained_users}/ NULLIF(${d23_eligible_users},0);;
+    drill_fields: [country,d23_retention_rate]
+  }
+
+  # D24
+
+  measure: d24_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 24"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "24"
+    }
+    drill_fields: [country,d24_retained_users]
+  }
+
+  measure: d24_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 24 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">24"
+    }
+    drill_fields: [country,d24_eligible_users]
+  }
+
+  measure: d24_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 24 days) that came back to play on day 24"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d24_retained_users}/ NULLIF(${d24_eligible_users},0);;
+    drill_fields: [country,d24_retention_rate]
+  }
+
+  # D25
+
+  measure: d25_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 25"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "25"
+    }
+    drill_fields: [country,d25_retained_users]
+  }
+
+  measure: d25_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 25 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">25"
+    }
+    drill_fields: [country,d25_eligible_users]
+  }
+
+  measure: d25_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 25 days) that came back to play on day 25"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d25_retained_users}/ NULLIF(${d25_eligible_users},0);;
+    drill_fields: [country,d25_retention_rate]
+  }
+
+  # D26
+
+  measure: d26_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 26"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "26"
+    }
+    drill_fields: [country,d26_retained_users]
+  }
+
+  measure: d26_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 26 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">26"
+    }
+    drill_fields: [country,d26_eligible_users]
+  }
+
+  measure: d26_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 26 days) that came back to play on day 26"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d26_retained_users}/ NULLIF(${d26_eligible_users},0);;
+    drill_fields: [country,d26_retention_rate]
+  }
+
+  # D27
+
+  measure: d27_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 27"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "27"
+    }
+    drill_fields: [country,d27_retained_users]
+  }
+
+  measure: d27_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 27 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">27"
+    }
+    drill_fields: [country,d27_eligible_users]
+  }
+
+  measure: d27_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 27 days) that came back to play on day 27"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d27_retained_users}/ NULLIF(${d27_eligible_users},0);;
+    drill_fields: [country,d27_retention_rate]
+  }
+
+  # D28
+
+  measure: d28_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 28"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "28"
+    }
+    drill_fields: [country,d28_retained_users]
+  }
+
+  measure: d28_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 28 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">28"
+    }
+    drill_fields: [country,d28_eligible_users]
+  }
+
+  measure: d28_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 28 days) that came back to play on day 28"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d28_retained_users}/ NULLIF(${d28_eligible_users},0);;
+    drill_fields: [country,d28_retention_rate]
+  }
+
+  # D29
+
+  measure: d29_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 29"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "29"
+    }
+    drill_fields: [country,d29_retained_users]
+  }
+
+  measure: d29_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 29 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">29"
+    }
+    drill_fields: [country,d29_eligible_users]
+  }
+
+  measure: d29_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 29 days) that came back to play on day 29"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d29_retained_users}/ NULLIF(${d29_eligible_users},0);;
+    drill_fields: [country,d29_retention_rate]
+  }
+
+  # D30
+
+  measure: d30_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 30"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "30"
+    }
+    drill_fields: [country,d30_retained_users]
+  }
+
+  measure: d30_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 30 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">30"
+    }
+    drill_fields: [country,d30_eligible_users]
+  }
+
+  measure: d30_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 30 days) that came back to play on day 30"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d30_retained_users}/ NULLIF(${d30_eligible_users},0);;
+    drill_fields: [country,d30_retention_rate]
+  }
+
+  # D45
+
+  measure: d45_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 45"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "45"
+    }
+    drill_fields: [country,d45_retained_users]
+  }
+
+  measure: d45_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 45 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">45"
+    }
+    drill_fields: [country,d45_eligible_users]
+  }
+
+  measure: d45_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 45 days) that came back to play on day 45"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d45_retained_users}/ NULLIF(${d45_eligible_users},0);;
+    drill_fields: [country,d45_retention_rate]
+  }
+
+  # D60
+
+  measure: d60_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 60"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "60"
+    }
+    drill_fields: [country,d60_retained_users]
+  }
+
+  measure: d60_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 60 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">60"
+    }
+    drill_fields: [country,d60_eligible_users]
+  }
+
+  measure: d60_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 60 days) that came back to play on day 60"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d60_retained_users}/ NULLIF(${d60_eligible_users},0);;
+    drill_fields: [country,d60_retention_rate]
+  }
+
+  # D90
+
+  measure: d90_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 90"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "90"
+    }
+    drill_fields: [country,d90_retained_users]
+  }
+
+  measure: d90_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 90 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">90"
+    }
+    drill_fields: [country,d90_eligible_users]
+  }
+
+  measure: d90_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 90 days) that came back to play on day 90"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d90_retained_users}/ NULLIF(${d90_eligible_users},0);;
+    drill_fields: [country,d90_retention_rate]
+  }
+
+  # D120
+
+  measure: d120_retained_users {
+    group_label: "Retention"
+    description: "Number of players that came back to play on day 120"
+    type: count_distinct sql: ${firebase_user_id} ;;
+    filters: {
+      field: retention_day
+      value: "120"
+    }
+    drill_fields: [country,d120_retained_users]
+  }
+
+  measure: d120_eligible_users {
+    hidden: yes
+    group_label: "Retention"
+    description: "Number of players older than 120 days"
+    type: count_distinct
+    sql: ${firebase_user_id} ;;
+    filters: {
+      field: days_since_user_signup
+      value: ">120"
+    }
+    drill_fields: [country,d120_eligible_users]
+  }
+
+  measure: d120_retention_rate {
+    group_label: "Retention"
+    description: "% of players (that are older than 120 days) that came back to play on day 120"
+    value_format_name: percent_2
+    type: number
+    sql: 1.0 * ${d120_retained_users}/ NULLIF(${d120_eligible_users},0);;
+    drill_fields: [country,d120_retention_rate]
+  }
+
+}
+
+view: events__user_properties__value {
+  dimension: double_value {
+    required_fields: [events__user_properties.key]
+    type: number
+    sql: ${TABLE}.double_value ;;
+  }
+
+  dimension: float_value {
+    required_fields: [events__user_properties.key]
+    type: number
+    sql: ${TABLE}.float_value ;;
+  }
+
+  dimension: int_value {
+    required_fields: [events__user_properties.key]
+    type: number
+    sql: ${TABLE}.int_value ;;
+  }
+
+  dimension: set_timestamp_micros {
+    required_fields: [events__user_properties.key]
+    type: number
+    sql: ${TABLE}.set_timestamp_micros ;;
+  }
+
+  dimension: string_value {
+    required_fields: [events__user_properties.key]
+    type: string
+    sql: ${TABLE}.string_value ;;
+  }
+
+  dimension: type{
+    required_fields: [events__user_properties.key]
+    sql: CASE
+        WHEN ${string_value} is not null then 'string'
+        WHEN COALESCE(${int_value},${float_value},${double_value}) is not null then 'number'
+        ELSE 'string'
+        END;;
+  }
+}
+
+view: events__user_properties {
+  dimension: key {
+    type: string
+    sql: ${TABLE}.key ;;
+  }
+
+  dimension: value {
+    hidden: yes
+    sql: ${TABLE}.value ;;
+  }
+}
+
+view: events__traffic_source {
+  dimension: medium {
+    description: "Name of the medium (paid search, organic search, email, etc.) that first acquired the user. This field is not populated in intraday tables."
+    type: string
+    sql: ${TABLE}.medium ;;
+  }
+
+  dimension: name {
+    description: "Name of the marketing campaign that first acquired the user. This field is not populated in intraday tables."
+    type: string
+    sql: ${TABLE}.name ;;
+  }
+
+  dimension: source {
+    description: "Name of the network that first acquired the user. This field is not populated in intraday tables."
+    type: string
+    sql: ${TABLE}.source ;;
+  }
+}
+
+view: events__event_params__value {
+  dimension: double_value {
+    required_fields: [events__event_params.key]
+    type: number
+    sql: ${TABLE}.double_value ;;
+  }
+
+  dimension: float_value {
+    required_fields: [events__event_params.key]
+    type: number
+    sql: ${TABLE}.float_value ;;
+  }
+
+  dimension: int_value {
+    required_fields: [events__event_params.key]
+    type: number
+    sql: ${TABLE}.int_value ;;
+  }
+
+  dimension: string_value {
+    required_fields: [events__event_params.key]
+    type: string
+    sql: ${TABLE}.string_value ;;
+  }
+
+  dimension: type{
+    required_fields: [events__event_params.key]
+    sql: CASE
+        WHEN ${string_value} is not null then 'string'
+        WHEN COALESCE(${int_value},${float_value},${double_value}) is not null then 'number'
+        ELSE 'string'
+        END;;
+  }
+}
+
+view: events__event_params {
+  dimension: key {
+    type: string
+    sql: ${TABLE}.key ;;
+  }
+
+  dimension: value {
+    hidden: yes
+    sql: ${TABLE}.value ;;
+  }
+}
+
+
+view: events__event_dimensions {
+  dimension: hostname {
+    type: string
+    sql: ${TABLE}.hostname ;;
+  }
+}
+
+view: events__device__web_info {
+  dimension: browser {
+    type: string
+    sql: ${TABLE}.browser ;;
+  }
+
+  dimension: browser_version {
+    type: string
+    sql: ${TABLE}.browser_version ;;
+  }
+
+  dimension: hostname {
+    type: string
+    sql: ${TABLE}.hostname ;;
+  }
+}

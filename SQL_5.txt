@@ -1,0 +1,12 @@
+select distinct (SELECT value.string_value FROM UNNEST(event_params) WHERE key="step_name") tutorial
+        --*
+        --extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau') event_date_2
+        --(SELECT value.int_value FROM UNNEST(event_params) WHERE key="milestone_number") milestone
+        --,count(event_name) milestone_quantity
+from `mira-merge---production.analytics_282550042.events_*`
+where 1=1
+and event_name = 'tutorial'
+--and (SELECT value.string_value FROM UNNEST(event_params) WHERE key="step_name") like '%Deer%'
+and extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau') >= '2023-02-15'
+--and extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau') <= '2023-05-14'
+order by tutorial

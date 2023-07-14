@@ -1,0 +1,101 @@
+view: finished_obstacle {
+  derived_table: {
+    sql:
+      SELECT
+      FO.user_id AS user_id,
+      FO.user_first_touch_timestamp AS first_touch_date,
+      FO.country AS country,
+      FO.platform AS platform,
+      FO.event_date AS event_date,
+      COUNT(DISTINCT(FO.prim_key)) AS result_count
+      FROM (
+        SELECT
+        CONCAT(user_pseudo_id,user_id,event_name,event_timestamp) AS prim_key,
+        user_id AS user_id,
+        user_first_touch_timestamp AS user_first_touch_timestamp,
+        geo.country AS country,
+        platform AS platform,
+        DATETIME(FORMAT_DATETIME("%Y-%m-%d",DATETIME(TIMESTAMP_MICROS(event_timestamp)))) AS event_date,
+        FROM `mira-merge---production.analytics_282550042.events_*`
+        WHERE event_name = "virtual_currency_spent"
+        AND (SELECT value.string_value FROM UNNEST(event_params) WHERE key="currency_type") = "energy"
+        AND (SELECT value.string_value FROM UNNEST(event_params) WHERE key="source") LIKE "it_bk_druidlog_%"
+        OR (SELECT value.string_value FROM UNNEST(event_params) WHERE key="source") LIKE "it_bk_whitestone_%"
+        OR (SELECT value.string_value FROM UNNEST(event_params) WHERE key="source") LIKE "it_bk_sand_%"
+        OR (SELECT value.string_value FROM UNNEST(event_params) WHERE key="source") LIKE "it_bk_flowerbranch_%"
+        OR (SELECT value.string_value FROM UNNEST(event_params) WHERE key="source") LIKE "it_bk_elvenstone_%"
+        OR (SELECT value.string_value FROM UNNEST(event_params) WHERE key="source") LIKE "it_bk_dryad_%"
+        OR (SELECT value.string_value FROM UNNEST(event_params) WHERE key="source") LIKE "it_bk_clayrock_%"
+        OR (SELECT value.string_value FROM UNNEST(event_params) WHERE key="source") LIKE "it_bk_iceblock_%"
+        OR (SELECT value.string_value FROM UNNEST(event_params) WHERE key="source") LIKE "it_bk_mushroom_%"
+        OR (SELECT value.string_value FROM UNNEST(event_params) WHERE key="source") LIKE "it_bk_hotbed_%"
+      ) AS FO
+      GROUP BY 1,2,3,4,5
+      ;;
+  }
+
+  dimension: user_id {
+    type: string
+    sql: ${TABLE}.user_id ;;
+  }
+
+  dimension: user_audience {
+    type: string
+    sql: ${TABLE}.user_aud ;;
+  }
+
+  dimension_group: first_open {
+    group_label: "First Open Date"
+    description: "The time at which the user first opened the app."
+    timeframes: [raw,time,hour,minute,date, week, day_of_week, month, year]
+    type: time
+    convert_tz: no
+    sql: TIMESTAMP_MICROS(${TABLE}.user_first_touch_date) ;;
+  }
+
+  dimension_group: event_date {
+    group_label: "Event Date"
+    description: "The time when an event has been occured."
+    timeframes: [date]
+    datatype: date
+    type: time
+    convert_tz: no
+    sql: ${TABLE}.event_date ;;
+  }
+
+  dimension: country {
+    type: string
+    sql: ${TABLE}.country ;;
+  }
+
+  dimension: platform {
+    type: string
+    sql: ${TABLE}.platform ;;
+  }
+
+  dimension: obstacle_count {
+    type: number
+    hidden: yes
+    sql: ${TABLE}.result_count ;;
+  }
+
+
+  measure: avg_obstacle_count {
+    type: average
+    value_format: "0.00"
+    sql: ${obstacle_count} ;;
+  }
+
+  measure: median_obstacle_count {
+    type: median
+    value_format: "0.00"
+    sql: ${obstacle_count} ;;
+  }
+
+  measure: 97th_percentile_obstacle_count {
+    type: percentile
+    value_format: "0.00"
+    percentile: 97
+    sql: ${obstacle_count} ;;
+  }
+}

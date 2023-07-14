@@ -1,0 +1,32 @@
+
+with cte1 as
+(
+select --*
+        count(event_name) events
+        ,concat(user_id," ", user_pseudo_id, " ", event_timestamp, " ", event_name, " ", user_first_touch_timestamp, ' ', geo.country) prim_key
+        --,(SELECT value.string_value FROM UNNEST(event_params) WHERE key="currency_type") currency
+        --,sum((SELECT value.int_value FROM UNNEST(event_params) WHERE key="amount")) amount_c_se_points
+        --extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau') event_date_2
+        --(SELECT value.string_value FROM UNNEST(event_params) WHERE key="currency_type") currency
+        --,count(event_name) milestone_quantity
+from `mira-merge---production.analytics_282550042.events_*`
+where 1=1
+      and event_name = 'inventory_earn'
+      and (SELECT value.string_value FROM UNNEST(event_params) WHERE key="currency_type") = 'c_se_points'
+      --and concat(user_id," ", user_pseudo_id, " ", event_timestamp, " ", event_name, " ", user_first_touch_timestamp, ' ', geo.country) = '2NhKOO5X2cyRdKquFMvlZmJyKIT e7794d2a756e85b574a80ab2e78b681e 1683059536251001 inventory_earn 1680283499381000 United Kingdom'
+      and device.operating_system = 'Android'
+      and geo.country = 'United Kingdom'
+      and (extract (date from TIMESTAMP_MICROS(user_first_touch_timestamp) at time zone 'Europe/Chisinau')) >= '2023-01-01'
+      and user_id is not null
+      and (extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau')) >= '2023-05-01'
+      and (extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau')) <= '2023-05-14'
+group by prim_key
+having events > 1
+)
+/*
+select count(event_name) events
+      ,count (cte1.prim_key) prim_key
+from cte1
+*/
+select *
+from cte1

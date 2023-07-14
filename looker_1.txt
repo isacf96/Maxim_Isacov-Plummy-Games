@@ -1,0 +1,155 @@
+view: all_events {
+  derived_table: {
+    sql:
+      SELECT
+        user_pseudo_id AS user_pseudo_id,
+        user_id AS user_id,
+        (SELECT value.string_value FROM UNNEST(user_properties) WHERE key="user_aud") AS user_aud,
+        (SELECT value.int_value FROM UNNEST(user_properties) WHERE key="ga_session_number") AS ga_sess_num,
+        user_first_touch_timestamp AS user_first_touch_timestamp,
+        DATETIME(TIMESTAMP_MICROS(user_first_touch_timestamp)) AS first_date,
+        event_timestamp AS event_timestamp,
+        DATETIME(TIMESTAMP_MICROS(event_timestamp)) AS event_date,
+        DATETIME_DIFF(DATETIME(TIMESTAMP_MICROS(event_timestamp)), DATETIME(TIMESTAMP_MICROS(user_first_touch_timestamp)), DAY) AS ret_day,
+        event_name AS event_name,
+        geo.country AS country,
+        platform AS platform,
+        (SELECT value.string_value FROM UNNEST(user_properties) WHERE key="config_version") AS config_version,
+        (SELECT value.string_value FROM UNNEST(user_properties) WHERE key="app_version") AS app_version,
+        (SELECT value.string_value FROM UNNEST(user_properties) WHERE key="user_level") AS user_level,
+        (SELECT value.string_value FROM UNNEST(user_properties) WHERE key="game_level") AS game_level,
+      FROM `analytics_282550042.events_*`
+      WHERE event_name IS NOT NULL
+        AND user_id IS NOT NULL
+      ;;
+  }
+
+  dimension: primary_key {
+    primary_key: yes
+    sql: CONCAT(${TABLE}.user_pseudo_id,${TABLE}.user_id,${TABLE}.event_name,${TABLE}.event_timestamp) ;;
+  }
+
+  dimension: user_pseudo_id {
+    type: string
+    sql: ${TABLE}.user_pseudo_id ;;
+  }
+
+  dimension: user_id {
+    type: string
+    sql: ${TABLE}.user_id ;;
+  }
+
+  dimension: user_audience {
+    type: string
+    sql: ${TABLE}.user_aud ;;
+  }
+
+  dimension: session_number {
+    type: number
+    sql: ${TABLE}.ga_sess_num ;;
+  }
+
+  dimension_group: first_open {
+    group_label: "First Open Date"
+    description: "The time at which the user first opened the app."
+    timeframes: [raw,time,hour,minute,date, week, day_of_week, month, year]
+    type: time
+    convert_tz: no
+    sql: TIMESTAMP_MICROS(${TABLE}.user_first_touch_timestamp) ;;
+  }
+
+  # dimension_group: event_date {
+  #   group_label: "Event Date"
+  #   type: time
+  #   timeframes: [
+  #     raw,
+  #     date,
+  #     week,
+  #     month,
+  #     quarter,
+  #     year
+  #   ]
+  #   convert_tz: no
+  #   datatype: date
+  #   sql: ${TABLE}.event_date ;;
+  # }
+
+  dimension_group: event_date {
+    group_label: "Event Date"
+    description: "The time when an event has been occured."
+    timeframes: [raw,time,hour,minute,date, week, day_of_week, month, year]
+    type: time
+    convert_tz: no
+    sql: TIMESTAMP_MICROS(${TABLE}.event_timestamp) ;;
+  }
+
+  dimension: retention_day {
+    type: number
+    sql: ${TABLE}.ret_day ;;
+  }
+
+  dimension: event_name {
+    type: string
+    sql: ${TABLE}.event_name ;;
+  }
+
+  dimension: country {
+    type: string
+    sql: ${TABLE}.country ;;
+  }
+
+  dimension: platform {
+    type: string
+    sql: ${TABLE}.platform ;;
+  }
+
+  dimension: config_version {
+    type: string
+    sql: ${TABLE}.config_version ;;
+  }
+
+  dimension: app_version {
+    type: string
+    sql: ${TABLE}.app_version ;;
+  }
+
+  dimension: user_level {
+    type: number
+    sql: ${TABLE}.user_level ;;
+  }
+
+  dimension: game_level {
+    type: number
+    sql: ${TABLE}.game_level ;;
+  }
+
+  measure: total_users {
+    type: count_distinct
+    sql: ${user_id};;
+  }
+
+  measure: event_count {
+    type: count_distinct
+    sql: ${primary_key};;
+  }
+
+  measure: date_count {
+    type: count_distinct
+    sql: ${event_date_date};;
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+}

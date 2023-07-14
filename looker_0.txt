@@ -1,0 +1,335 @@
+view: balance_daily_c_enrg {
+  derived_table: {
+    sql:
+
+-- cte 's' with virtual currency spending: user_id, currency and amount of energy spent
+-- with filters of OS Android, country UK, first_touch_timestamp from 2023-01-01
+    with s as
+    (
+    select user_id
+            ,extract (datetime from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau') AS event_datetime
+            ,IF(event_name = "virtual_currency_spent", (SELECT value.string_value FROM UNNEST(event_params) WHERE key="currency_type"),
+                    IF(event_name = "local_purchase", (SELECT value.string_value FROM UNNEST(event_params) WHERE key="currency"), "")) AS   currency
+            ,(SELECT value.int_value FROM UNNEST(event_params) WHERE key="amount") AS amount
+    FROM `mira-merge---production.analytics_282550042.events_*`
+            where 1=1
+            and event_name IN ("virtual_currency_spent", "local_purchase")
+            and device.operating_system = 'Android'
+            and geo.country = 'United Kingdom'
+            and (extract (datetime from TIMESTAMP_MICROS(user_first_touch_timestamp) at time zone 'Europe/Chisinau')) >= '2023-01-01'
+            and (SELECT value.string_value FROM UNNEST(event_params) WHERE key="currency_type") = 'c_enrg'
+            AND user_id IS NOT NULL
+            order by 1,2,4
+    )
+
+-- cte s_d with data from cte 's' grouped by date and by user
+      , s_d as
+      (
+      select user_id
+      ,date(event_datetime) date2
+      ,currency
+      ,sum(amount) amount
+      from s
+      group by user_id
+      ,date2
+      ,currency
+      order by user_id
+      ,date2
+      )
+
+-- cte 'a_d' with active dates and count of events grouped by date and by user
+-- this gives us all dates on which user was active, and we will use it later
+-- we also apply filters, of OS Android, country UK, first_touch_timestamp from 2023-01-01
+      , a_d as
+      (
+      select  user_id
+      ,extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau') as date1
+      ,count(event_name) events
+      from `mira-merge---production.analytics_282550042.events_*`
+      where 1=1
+      and device.operating_system = 'Android'
+      and geo.country = 'United Kingdom'
+      and (extract (datetime from TIMESTAMP_MICROS(user_first_touch_timestamp) at time zone 'Europe/Chisinau')) >= '2023-01-01'
+      and user_id is not null
+      group by user_id
+      ,date1
+      order by user_id
+      ,date1
+      )
+
+
+-- cte 'e' with virtual currency earnings: user_id, currency and amount of energy earned
+-- with filters of OS Android, country UK, first_touch_timestamp from 2023-01-01
+      ,e as
+      (
+      select user_id
+      ,extract (datetime from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau') AS event_datetime
+      ,(SELECT value.string_value FROM UNNEST(event_params) WHERE key="currency_type") currency
+      ,(SELECT value.int_value FROM UNNEST(event_params) WHERE key="amount") AS amount
+      FROM `mira-merge---production.analytics_282550042.events_*`
+      where 1=1
+      and event_name IN ("virtual_currency_earn")
+      and device.operating_system = 'Android'
+      and geo.country = 'United Kingdom'
+      and (extract (datetime from TIMESTAMP_MICROS(user_first_touch_timestamp) at time zone 'Europe/Chisinau')) >= '2023-01-01'
+      and (SELECT value.string_value FROM UNNEST(event_params) WHERE key="currency_type") = 'c_enrg'
+      AND user_id IS NOT NULL
+      order by 1,2,3,4
+      )
+
+-- cte e_d with data from cte 'e' grouped by date and by user
+      , e_d as
+      (
+      select user_id
+      ,date(event_datetime) date2
+      ,currency
+      ,sum(amount) amount
+      from e
+      group by user_id
+      ,date2
+      ,currency
+      order by user_id
+      ,date2
+      )
+
+
+-- cte a_s_d, we join a_d with s_d to add null rows for dates without actions
+-- and then replace nulls with "0" and parameters
+      , a_s_d as
+      (
+      select a_d.user_id
+      ,a_d.date1
+      ,events
+      ,coalesce(currency, 'c_enrg') currency
+      ,coalesce(s_d.amount, 0) amount
+      from a_d
+      left join s_d
+      on a_d.user_id = s_d.user_id
+      and a_d.date1 = s_d.date2
+      order by a_d.user_id
+      ,a_d.date1
+      )
+
+
+-- сte with user_id, date, amount of events, currency
+-- amount of earnings, amount of spendings
+, a_e_s_d as
+(
+select  a_s_d.user_id
+        ,a_s_d.date1 event_date
+        ,events
+        ,a_s_d.currency
+        ,coalesce(e_d.amount, 0) e_amount
+        ,coalesce(a_s_d.amount, 0) s_amount
+from a_s_d
+left join e_d
+        on a_s_d.user_id = e_d.user_id
+        and a_s_d.date1 = e_d.date2
+        and a_s_d.currency = e_d.currency
+and events > 1
+order by a_s_d.user_id
+        ,a_s_d.currency
+       ,a_s_d.date1
+)
+
+-- final select where we get all active dates with user_id, date, amount of events, currency
+-- amount of earnings, amount of spendings and balance
+select *
+        ,(e_amount - s_amount) balance
+from a_e_s_d
+order by user_id
+        ,currency
+       ,event_date
+
+      ;;
+  }
+
+  dimension: user_id {
+    type: string
+    sql: ${TABLE}.user_id ;;
+  }
+
+  dimension_group: event_date {
+    group_label: "Event Date"
+    description: "The time when an event has been occured."
+    timeframes: [date, week, day_of_week, month, year]
+    type: time
+    convert_tz: no
+    sql: TIMESTAMP(${TABLE}.event_date) ;;
+  }
+
+
+  dimension: currency {
+    type: string
+    sql: ${TABLE}.currency ;;
+  }
+
+  dimension: events {
+    type: number
+    sql: ${TABLE}.events ;;
+  }
+
+  dimension: e_amount {
+    type: number
+    sql: ${TABLE}.e_amount ;;
+  }
+
+  dimension: s_amount {
+    type: number
+    sql: ${TABLE}.s_amount ;;
+  }
+
+  dimension: balance {
+    type: number
+    sql: ${TABLE}.balance ;;
+  }
+
+
+  measure: total_e_amount {
+    type: sum
+    sql: ${e_amount} ;;
+  }
+
+  measure: total_s_amount {
+    type: sum
+    sql: ${s_amount} ;;
+  }
+
+  measure: total_balance {
+    type: sum
+    sql: ${balance} ;;
+  }
+
+  measure: average_e_amount_per_user {
+    type: average
+    value_format: "0.00"
+    sql: ${e_amount} ;;
+  }
+
+  measure: average_s_amount_per_user {
+    type: average
+    value_format: "0.00"
+    sql: ${s_amount} ;;
+  }
+
+  measure: average_balance_per_user {
+    type: average
+    value_format: "0.00"
+    sql: ${balance} ;;
+  }
+
+  measure: median_e_amount_per_user {
+    type: median
+    sql: ${e_amount} ;;
+  }
+
+  measure: median_s_amount_per_user {
+    type: median
+    sql: ${s_amount} ;;
+  }
+
+  measure: median_balance_per_user {
+    type: median
+    sql: ${balance} ;;
+  }
+
+
+  measure: percentile_85th_e_amount_per_user {
+    type: percentile
+    percentile: 85
+    sql: ${e_amount} ;;
+  }
+
+  measure: percentile_85th_s_amount_per_user {
+    type: percentile
+    percentile: 85
+    sql: ${s_amount} ;;
+  }
+
+  measure: percentile_85th_balance_per_user {
+    type: percentile
+    percentile: 85
+    sql: ${balance} ;;
+  }
+
+  measure: percentile_90th_e_amount_per_user {
+    type: percentile
+    percentile: 90
+    sql: ${e_amount} ;;
+  }
+
+  measure: percentile_90th_s_amount_per_user {
+    type: percentile
+    percentile: 90
+    sql: ${s_amount} ;;
+  }
+
+  measure: percentile_90th_balance_per_user {
+    type: percentile
+    percentile: 90
+    sql: ${balance} ;;
+  }
+
+  measure: percentile_93rd_e_amount_per_user {
+    type: percentile
+    percentile: 93
+    sql: ${e_amount} ;;
+  }
+
+  measure: percentile_93rd_s_amount_per_user {
+    type: percentile
+    percentile: 93
+    sql: ${s_amount} ;;
+  }
+
+  measure: percentile_93rd_balance_per_user {
+    type: percentile
+    percentile: 93
+    sql: ${balance} ;;
+  }
+
+  measure: percentile_95th_e_amount_per_user {
+    type: percentile
+    percentile: 95
+    sql: ${e_amount} ;;
+  }
+
+  measure: percentile_95th_s_amount_per_user {
+    type: percentile
+    percentile: 95
+    sql: ${s_amount} ;;
+  }
+
+  measure: percentile_95th_balance_per_user {
+    type: percentile
+    percentile: 95
+    sql: ${balance} ;;
+  }
+
+  measure: percentile_97th_e_amount_per_user {
+    type: percentile
+    percentile: 97
+    sql: ${e_amount} ;;
+  }
+
+  measure: percentile_97th_s_amount_per_user {
+    type: percentile
+    percentile: 97
+    sql: ${s_amount} ;;
+  }
+
+  measure: percentile_97th_balance_per_user {
+    type: percentile
+    percentile: 97
+    sql: ${balance} ;;
+  }
+
+
+
+  measure: total_users {
+    type: count_distinct
+    sql: ${user_id};;
+  }
+
+}
+

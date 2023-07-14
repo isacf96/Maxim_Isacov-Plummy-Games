@@ -1,0 +1,42 @@
+
+# cte with payers during the period 1 May 2023 - 14 May 2023
+with payers as
+(
+select distinct user_id
+from `mira-merge---production.analytics_282550042.events_*`
+where 1=1
+        and event_name = 'iap_purchase'
+        and device.operating_system = 'Android'
+        and geo.country = 'United Kingdom'
+        and (extract (date from TIMESTAMP_MICROS(user_first_touch_timestamp) at time zone 'Europe/Chisinau')) >= '2023-01-01'
+        and user_id is not null
+        and (extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau')) >= '2023-05-01'
+        and (extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau')) <= '2023-05-14'
+        and (SELECT value.string_value FROM UNNEST(event_params) WHERE key="status") = 'success'
+)
+
+# users by milestone with all filters 'Android', 'United Kingdom', >= '2023-01-01'
+select (SELECT value.int_value FROM UNNEST(event_params) WHERE key="milestone_number") milestone
+        ,count(distinct user_id) users
+from `mira-merge---production.analytics_282550042.events_*`
+where 1=1
+        and event_name = 'milestone'
+        and (select value.string_value from unnest(event_params) where key ='feature_name') = 'se_deer'
+        and device.operating_system = 'Android'
+        and geo.country = 'United Kingdom'
+        and (extract (date from TIMESTAMP_MICROS(user_first_touch_timestamp) at time zone 'Europe/Chisinau')) >= '2023-01-01'
+        and user_id is not null
+        and (extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau')) >= '2023-05-01'
+        and (extract (date from TIMESTAMP_MICROS(event_timestamp) at time zone 'Europe/Chisinau')) <= '2023-05-14'
+        
+        # filter for premium
+        and (SELECT value.int_value FROM UNNEST(event_params) WHERE key="premium") = 1
+        
+        # select payers from 'payers' cte
+        and user_id in (select * from payers)
+
+group by milestone
+order by milestone
+
+
+
